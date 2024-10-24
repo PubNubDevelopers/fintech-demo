@@ -4,7 +4,7 @@ Application to show how PubNub can add real-time features to your FinTech soluti
 
 ## Demo
 
-A hosted version of this demo can be found at [https://fintech-demo.netlify.app](https://fintech-demo.netlify.app)
+A hosted version of this demo can be found at [https://pubnub-fintech-demo.netlify.app](https://pubnub-fintech-demo.netlify.app)
 
 ## Installation / Getting Started
 
