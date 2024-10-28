@@ -3,10 +3,9 @@ import Avatar from '../ui-components/avatar'
 import Pill from '../ui-components/pill'
 import PersonPicker from '../ui-components/personPicker'
 import { CurrencySymbol } from '@/app/types'
-import { userData } from '../data/user-data'
 import { useState } from 'react'
 
-export default function PaymentMenuScreen ({ loggedInUser, otherUser, logoutUser, balance, setBalance, sendMoneyClick, requestMoneyClick, chatWithFriendClicked }) {
+export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUser, balance, setBalance, sendMoneyClick, requestMoneyClick, chatWithFriendClicked }) {
 
   function logout () {
     logoutUser()
@@ -17,7 +16,7 @@ export default function PaymentMenuScreen ({ loggedInUser, otherUser, logoutUser
   }
 
   function personSelected () {
-    chatWithFriendClicked(otherUser)
+    chatWithFriendClicked(remoteUser)
   }
 
   function chatWithSupport() {
@@ -36,17 +35,17 @@ export default function PaymentMenuScreen ({ loggedInUser, otherUser, logoutUser
         width={30}
         height={30}
       />
-      <div className='text-2xl text-center m-1'>Payment Home</div>
+      <div className='text-2xl text-center m-1'>Payment Menu</div>
       <Avatar
-        avatarUrl={userData.users[loggedInUser]?.avatarUrl}
+        avatarUrl={loggedInUser?.profileUrl}
         width={48}
         height={48}
       ></Avatar>
       <div className='flex flex-row items-center'>
-        <div className='text-sm m-1'>You: {userData.users[loggedInUser]?.name}</div>
+        <div className='text-sm m-1'>You: {loggedInUser?.name}</div>
         <div className='m-1 text-xs text-neutral-500'>
           {' '}
-          ({userData.users[loggedInUser]?.phone})
+          ({loggedInUser?.custom?.phone})
         </div>
       </div>
 
@@ -139,12 +138,12 @@ export default function PaymentMenuScreen ({ loggedInUser, otherUser, logoutUser
         <div className='flex flex-col w-full items-center mt-4 gap-1'>
           <div className='text-lg'>Chat with Friends</div>
           <div className='text-xs self-start mx-2'>Available Friends:</div>
-          {otherUser != -1 ? (
+          {remoteUser ? (
             <PersonPicker
-              id={userData.users[otherUser].name}
-              name={userData.users[otherUser].name}
-              phone={userData.users[otherUser].phone}
-              avatarUrl={userData.users[otherUser].avatarUrl}
+              id={remoteUser.id}
+              name={remoteUser.name}
+              phone={remoteUser.custom.phone}
+              avatarUrl={remoteUser.profileUrl}
               personSelected={personSelected}
               className={'w-3/5'}
             ></PersonPicker>

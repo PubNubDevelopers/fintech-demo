@@ -3,12 +3,11 @@ import Avatar from '../ui-components/avatar'
 import Pill from '../ui-components/pill'
 import PersonPicker from '../ui-components/personPicker'
 import { CurrencySymbol, TransferType } from '@/app/types'
-import { userData } from '../data/user-data'
 import { useState } from 'react'
 
 export default function TransferMoneyScreen ({
-  otherUser = -1,
-  prepopulatedUser = -1,
+  remoteUser,
+  prepopulatedUser,
   transferType,
   currentBalance,
   goBack,
@@ -21,6 +20,7 @@ export default function TransferMoneyScreen ({
       : currentBalance + transferAmount
   )
   const [selectedRecipient, setSelectedRecipient] = useState(prepopulatedUser)
+  const [selectedImage, setSelectedImage] = useState(1)
 
   function increaseTransferAmount (amount) {
     if (transferType == TransferType.SEND) {
@@ -48,15 +48,15 @@ export default function TransferMoneyScreen ({
   }
 
   function recipientClicked () {
-    if (otherUser != -1) {
+    if (remoteUser) {
       console.log('recipient clicked')
-      if (selectedRecipient == -1) setSelectedRecipient(otherUser)
-      else setSelectedRecipient(-1)
+      if (!selectedRecipient) setSelectedRecipient(remoteUser)
+      else setSelectedRecipient(null)
     }
   }
 
   function requestMoney () {
-    initiateTransferRequest(transferType, transferAmount, selectedRecipient)
+    initiateTransferRequest(transferType, transferAmount, selectedRecipient, selectedImage)
   }
 
   function back () {
@@ -174,28 +174,28 @@ export default function TransferMoneyScreen ({
       {/* Transfer Money */}
       <div className='w-full flex flex-col items-center mt-4'>
         {/* Chat with Friends */}
-        <div className='flex flex-col w-full items-center mt-4 gap-1'>
+        <div className='flex flex-col w-full items-center mt-0 gap-1'>
           <div className='text-lg p-2 text-center'>
             {transferType == TransferType.SEND ? 'Money' : 'Request'} will be
             sent to
-            {otherUser != -1 && selectedRecipient != -1 ? (
+            {remoteUser && selectedRecipient ? (
               <div className='font-semibold'>
-                {userData.users[selectedRecipient].name}
+                {selectedRecipient.name}
               </div>
             ) : (
               <div className='font-semibold'>Please Select Recipient</div>
             )}
           </div>
           <div className='text-xs self-start mx-2'>Possible Recipients</div>
-          {otherUser != -1 ? (
+          {remoteUser ? (
             <PersonPicker
-              id={userData.users[otherUser].name}
-              name={userData.users[otherUser].name}
-              phone={userData.users[otherUser].phone}
-              avatarUrl={userData.users[otherUser].avatarUrl}
+              id={remoteUser.id}
+              name={remoteUser.name}
+              phone={remoteUser.custom.phone}
+              avatarUrl={remoteUser.profileUrl}
               personSelected={recipientClicked}
               className={
-                selectedRecipient == -1
+                selectedRecipient == null
                   ? 'w-3/5 opacity-100'
                   : 'w-3/5 opacity-30'
               }
@@ -207,17 +207,64 @@ export default function TransferMoneyScreen ({
           )}
         </div>
 
-        {otherUser != -1 && selectedRecipient != -1 && transferAmount > 0 && projectedBalance > 0 && (
-          <button
-            type='button'
+        <div className='text-xs self-start mx-2'>Choose an Image (optional)</div>
+        <div className='flex flex-row gap-2 mt-3'>
+          <Image
+            src='/icons/no-symbol.svg'
+            alt='None'
+            className={`cursor-pointer p-3 ${selectedImage == 1 ? 'border-2 border-inputring' : ''}`}
             onClick={() => {
-              requestMoney()
+              setSelectedImage(1)
             }}
-            className='relative bg-navy900 text-neutral50 text-sm py-3 m-3 rounded-md shadow-sm w-5/6'
-          >
-            {transferType == TransferType.SEND ? 'Send' : 'Request'} Money
-          </button>
-        )}
+            width={60}
+            height={60}
+          />
+          <Image
+            src='/logos/pn-logo-red-white.png'
+            alt='PN Logo'
+            className={`cursor-pointer ${selectedImage == 2 ? 'border-2 border-inputring' : ''}`}
+            onClick={() => {
+              setSelectedImage(2)
+            }}
+            width={60}
+            height={60}
+          />
+          <Image
+            src='/logos/pn-logo-white-black.png'
+            alt='PN Logo'
+            className={`cursor-pointer ${selectedImage == 3 ? 'border-2 border-inputring' : ''}`}
+            onClick={() => {
+              setSelectedImage(3)
+            }}
+            width={60}
+            height={60}
+          />
+          <Image
+            src='/logos/pn-logo-red-black.png'
+            alt='PN Logo'
+            className={`cursor-pointer ${selectedImage == 4 ? 'border-2 border-inputring' : ''}`}
+            onClick={() => {
+              setSelectedImage(4)
+            }}
+            width={60}
+            height={60}
+          />
+        </div>
+
+        {remoteUser &&
+          selectedRecipient &&
+          transferAmount > 0 &&
+          projectedBalance > 0 && (
+            <button
+              type='button'
+              onClick={() => {
+                requestMoney()
+              }}
+              className='relative bg-navy900 text-neutral50 text-sm py-3 m-3 rounded-md shadow-sm w-5/6'
+            >
+              {transferType == TransferType.SEND ? 'Send' : 'Request'} Money
+            </button>
+          )}
       </div>
     </div>
   )

@@ -3,7 +3,6 @@ import Avatar from '../ui-components/avatar'
 import Pill from '../ui-components/pill'
 import PersonPicker from '../ui-components/personPicker'
 import { CurrencySymbol, TransferType } from '@/app/types'
-import { userData } from '../data/user-data'
 import { useState } from 'react'
 
 export default function ReceiptScreen ({
@@ -49,18 +48,18 @@ export default function ReceiptScreen ({
           <div className='flex flex-col'>
             <div className='text-xs'>Sent by</div>
             <div className='flex flex-row items-center'>
-              <div className='text-lg'>{userData.users[sender].name}</div>
+              <div className='text-lg'>{sender?.name}</div>
               <div className='text-sm text-neutral-500 ml-1'>
-                {`(${userData.users[sender].phone})`}
+                {`(${sender?.custom?.phone})`}
               </div>
             </div>
           </div>
           <div className='flex flex-col'>
             <div className='text-xs'>Recipient</div>
             <div className='flex flex-row items-center'>
-              <div className='text-lg'>{userData.users[recipient].name}</div>
+              <div className='text-lg'>{recipient?.name}</div>
               <div className='text-sm text-neutral-500 ml-1'>
-                {`(${userData.users[recipient].phone})`}
+                {`(${recipient?.custom?.phone})`}
               </div>
             </div>
           </div>

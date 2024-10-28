@@ -5,6 +5,8 @@
     userId: string
   ): Promise<{ accessManagerToken: string | undefined }> {
     try {
+      //  todo reintroduce this
+      return "123"
       const TOKEN_SERVER =
         "https://devrel-demos-access-manager.netlify.app/.netlify/functions/api/fintech";
       const response = await fetch(`${TOKEN_SERVER}/grant`, {
