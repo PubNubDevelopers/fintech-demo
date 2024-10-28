@@ -3,7 +3,7 @@ import Image from 'next/image'
 import { roboto } from '@/app/fonts'
 import { useState, useEffect, useCallback } from 'react'
 import MessageReaction from './messageReaction'
-import { MessageActionsTypes, PresenceIcon, ToastType } from '@/app/types'
+import { PresenceIcon, TransferType } from '@/app/types'
 import { Channel, TimetokenUtils, MixedTextTypedElement } from '@pubnub/chat'
 
 export default function Message ({
@@ -56,6 +56,16 @@ export default function Message ({
 
   async function reactionClicked (emoji, timetoken) {
     await message?.toggleReaction(emoji)
+  }
+
+  async function paymentAction(actionType, message)
+  {
+    if (actionType == 'accept')
+    {
+      console.log('Accept payment for message ' + message.timetoken)
+      message.meta["status"] = "ACCEPTED"
+      message.editText("I am edited text", {meta: {'status': 'ACCEPTED'}})
+    }
   }
 
   const determineUserReadableDate = useCallback(timetoken => {
@@ -135,6 +145,26 @@ export default function Message ({
     []
   )
 
+  const renderPayment = useCallback(
+    (message, messageMeta) => {
+      return (
+        <div>
+        {(messageMeta["transferType"] == TransferType.SEND && 
+        <span className='text-navy500'>Has Action (send)</span>)}
+        {/*(messageMeta["transferType"] == TransferType.RECEIVE && 
+        <span className='text-navy500'>Has Action (receive)</span>)*/}
+        {(message.userId == currentUserId && 
+        <span className='text-navy500'>I sent it</span>)}
+        {(
+          messageMeta["status"] && 
+          <span className=''>Status is {messageMeta["status"]}</span> 
+        )}
+        <div className="cursor-pointer" onClick={() => paymentAction('accept', message)}>Accept Payment</div>
+        </div>
+      )
+    }, []
+  )
+
   return (
     <div className='flex flex-col w-full'>
       <div
@@ -200,6 +230,9 @@ export default function Message ({
                   message
                     .getMessageElements()
                     .map((msgPart, index) => renderMessagePart(msgPart, index))}
+                {message.meta && (
+                  renderPayment(message, message.meta)
+                )}
                 {message.actions && message.actions.edited && (
                   <span className='text-navy500'>&nbsp;&nbsp;(edited)</span>
                 )}
@@ -237,15 +270,15 @@ export default function Message ({
                   displayOverride = {true}
                   reactionClicked={reactionClicked}
                 />}
-              {actionsShown && !message.hasUserReaction("🐨") && <MessageReaction
-                  emoji={"🐨"}
+              {actionsShown && !message.hasUserReaction("💸") && <MessageReaction
+                  emoji={"💸"}
                   messageTimetoken={message.timetoken}
                   count={0}
                   displayOverride = {true}
                   reactionClicked={reactionClicked}
                 />}
-              {actionsShown && !message.hasUserReaction("🍊") && <MessageReaction
-                  emoji={"🍊"}
+              {actionsShown && !message.hasUserReaction("💰") && <MessageReaction
+                  emoji={"💰"}
                   messageTimetoken={message.timetoken}
                   count={0}
                   displayOverride = {true}

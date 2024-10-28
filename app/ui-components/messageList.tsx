@@ -34,12 +34,8 @@ export default function MessageList ({
   useEffect(() => {
     //  UseEffect to handle initial configuration of the Message List including reading the historical messages
     setLoadingMessage('Fetching History from Server...')
-    console.log(activeChannel)
-    console.log(activeChannelMembership)
     if (!activeChannel || !activeChannelMembership) return
     async function initMessageList () {
-      console.log('retrieving history')
-      console.log(activeChannel)
       setMessages([])
       activeChannel
         .getHistory({ count: 20 })
@@ -119,7 +115,7 @@ export default function MessageList ({
   return (
         <div className='w-full h-full overflow-y-auto overscroll-none' ref={messageListRef}>
           {messages && messages.length == 0 && (
-          <div className='flex flex-col items-center justify-center w-full h-screen text-xl select-none gap-4'>
+          <div className='flex flex-col items-center justify-end w-full h-screen text-xl select-none gap-4 mb-16'>
             <Image
               src='/brand-icons/FinTech_Icon.svg'
               alt='Chat Icon'
@@ -142,13 +138,8 @@ export default function MessageList ({
                   ? currentUser.profileUrl
                   : remoteUser?.profileUrl
               }
-              isOnline={
-                message.userId === currentUser.id
-                  ? currentUser.active
-                  : remoteUser?.active
-              }
               readReceipts={readReceipts}
-              showReadIndicator={activeChannel.type !== 'public'}
+              showReadIndicator={activeChannel?.type !== 'public'}
               sender={
                 message.userId === currentUser.id
                   ? currentUser.name

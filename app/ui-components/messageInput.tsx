@@ -1,7 +1,6 @@
 import Image from 'next/image'
 import Avatar from './avatar'
 import { MessageDraft, User, Channel } from '@pubnub/chat'
-import MentionSuggestions from './mentionSuggestions'
 import { useState, useEffect, useRef } from 'react'
 import { ToastType } from '@/app/types'
 

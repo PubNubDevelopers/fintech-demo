@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 
 export default function LoginScreen ({
   personSelected = person => {},
-  disabledId = "-1",
+  disabledId,
   isLeft = true,
   chat
 }) {

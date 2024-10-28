@@ -10,3 +10,9 @@ export enum ToastType {
     CHECK = 1,
     ERROR = 2,
   }
+
+  export enum PresenceIcon {
+    NOT_SHOWN = -1,
+    OFFLINE = 0,
+    ONLINE = 1,
+  }
