@@ -1,10 +1,10 @@
 import { roboto } from '@/app/fonts'
 
 export default function Pill ({
-    clickAction = () => {},
-    text = '',
-    className = '',
-    textClassName = ''
+  clickAction = () => {},
+  text = '',
+  className = '',
+  textClassName = ''
 }) {
   return (
     <div

@@ -1,26 +1,28 @@
-import Image from 'next/image'
+//  Landing page after the user logs in
 import PaymentMenuScreen from './paymentMenuScreen'
 import TransferMoneyScreen from './transferMoneyScreen'
+import SimulatedPushNotification from '../ui-components/simulatedPushNotification'
 import ChatScreen from './chatScreen'
 import ReceiptScreen from './receiptScreen'
 import { Chat, User, Channel, Membership } from '@pubnub/chat'
-import { TransferType } from '@/app/types'
+import { TransferType, ScreenType } from '@/app/types'
 import { getAuthKey } from '@/app/getAuthKey'
 import { useState, useEffect } from 'react'
+import { imageData } from '../data/user-data'
+import { actionCompleted } from 'pubnub-demo-integration'
 
 export default function HomeScreen ({
   loggedInUserId,
   otherUserId,
   logoutUser
 }) {
-  //  0 is top level payment menu
-  //  1 is payment transfer screen
-  //  2 is the chat screen
-  //  3 is the receipt screen
-  const [screen, setScreen] = useState(0)
-  //  todo default balance should come from app context
+  const [screen, setScreen] = useState(ScreenType.SCREEN_TOP_LEVEL)
+  //  This demo app stores the balance locally but you would handle the
+  //  financial aspects of the app in your dedicated backend.
   const [balance, setBalance] = useState(10000) //  In whatever fractional units are used
   const [transferType, setTransferType] = useState(TransferType.SEND)
+  const [pushMessageVisible, setPushMessageVisible] = useState(false)
+  const [currentPushMessage, setCurrentPushMessage] = useState('')
 
   //  PubNub variables
   const [chat, setChat] = useState<Chat | null>(null)
@@ -31,80 +33,135 @@ export default function HomeScreen ({
   const [directChannelMembership, setDirectChannelMembership] =
     useState<Membership | null>(null)
 
+  //  Receipt variables
+  const [receiptTransactionId, setReceiptTransactionId] = useState('')
+  const [receiptSender, setReceiptSender] = useState<User | null | undefined>(
+    null
+  )
+  const [receiptRecipient, setReceiptRecipient] = useState<
+    User | null | undefined
+  >(null)
+  const [receiptAmount, setReceiptAmount] = useState(0)
+  const [receiptReference, setReceiptReference] = useState('')
+  const [receiptTimeOfRequest, setReceiptTimeOfRequest] = useState(0)
+  const [receiptStatus, setReceiptStatus] = useState('')
+
   function sendMoneyClick (user) {
     setPrepopulatedUser(user)
     setTransferType(TransferType.SEND)
-    setScreen(1)
+    setScreen(ScreenType.SCREEN_PAYMENT_TRANSFER)
   }
 
   function requestMoneyClick (user) {
     setPrepopulatedUser(user)
     setTransferType(TransferType.REQUEST)
-    setScreen(1)
+    setScreen(ScreenType.SCREEN_PAYMENT_TRANSFER)
   }
 
-  function chatWithFriendClicked (friend) {
-    console.log('chatting with ' + friend)
-    setScreen(2)
+  function chatWithFriendClicked () {
+    setScreen(ScreenType.SCREEN_CHAT)
   }
 
+  //  Handling the transfer request at this level since it can be called by either the transferMoneyScreen or the chatScreen
   async function initiateTransferRequest (
     transferType,
     transferAmount,
     recipient,
     selectedImage
   ) {
-    console.log(
-      'Initiating a ' +
-        transferType +
-        ' transfer request for ' +
-        transferAmount +
-        ' to ' +
-        recipient
-    )
-    console.log(selectedImage)
-    //  ToDo Send message that represents payment request
-    let fileBlob
-    if (selectedImage != 0) {
+    if (transferType == TransferType.SEND) {
+      //  These actions only apply to the demo hosted on pubnub.com
+      actionCompleted({
+        action: 'Send Money',
+        blockDuplicateCalls: false,
+        debug: false
+      })
+    } else {
+      //  These actions only apply to the demo hosted on pubnub.com
+      actionCompleted({
+        action: 'Request Money',
+        blockDuplicateCalls: false,
+        debug: false
+      })
+    }
+
+    let myImageFile
+    if (selectedImage > 1) {
       //  Add file to message
       try {
-        fileBlob = [
-          await fetch(
-            'https://pubnub-fintech-demo.netlify.app/logos/pn-logo-red-black.png'
-          ).then(r => r.blob())
+        const fileBlob = await fetch(imageData.images[selectedImage].url).then(
+          r => r.blob()
+        )
+        myImageFile = [
+          new File([fileBlob], imageData.images[selectedImage].name, {
+            type: 'image/png'
+          })
         ]
       } catch (e) {
         console.log('Failed to attach file to message: ' + e)
       }
     }
-    await directChannel?.sendText('Test Payment', {
+    directChannel?.sendText('', {
       meta: {
         type: 'payment',
-        transferType: TransferType.SEND,
-        status: 'PENDING',
-        amount: transferAmount
+        transferType: transferType,
+        amount: transferAmount,
+        transactionId: makeid(8),
+        reference: makeid(10)
       },
-      files: fileBlob,
+      files: myImageFile,
       storeInHistory: true
     })
-    if (otherUserId) {
-      setScreen(2)
+
+    setTimeout(() => {
+      if (otherUserId) {
+        setScreen(ScreenType.SCREEN_CHAT)
+      }
+    }, 100)
+  }
+
+  async function showReceiptScreen (message) {
+    setReceiptTransactionId(message.meta['transactionId'])
+    setReceiptSender(message.userId == localUser?.id ? localUser : remoteUser)
+    setReceiptRecipient(
+      message.userId == localUser?.id ? remoteUser : localUser
+    )
+    setReceiptAmount(message.meta['amount'])
+    setReceiptReference(message.meta['reference'])
+    setReceiptTimeOfRequest(message.timetoken)
+    if (message.hasThread) {
+      setReceiptStatus('Transfer Completed')
+    } else {
+      setReceiptStatus('Transfer Pending')
     }
+    setScreen(ScreenType.SCREEN_RECEIPT)
+  }
+
+  function makeid (length) {
+    let result = ''
+    const characters =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    const charactersLength = characters.length
+    let counter = 0
+    while (counter < length) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength))
+      counter += 1
+    }
+    return result
   }
 
   /* Initialization logic */
   useEffect(() => {
     async function init () {
       const { accessManagerToken } = await getAuthKey(loggedInUserId)
-      console.log(loggedInUserId)
       const localChat = await Chat.init({
         publishKey: process.env.NEXT_PUBLIC_PUBNUB_PUBLISH_KEY,
         subscribeKey: process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY,
         userId: loggedInUserId,
         typingTimeout: 5000,
-        storeUserActivityTimestamps: true,
-        storeUserActivityInterval: 300000 /* 5 minutes */
-        //authKey: accessManagerToken,  /* todo reintroduce this */
+        storeUserActivityTimestamps: true, //  Not used in this demo, but set these to be able to access the user.active property
+        storeUserActivityInterval: 60000 /* 1 minute */,
+        authKey: accessManagerToken
       })
       setChat(localChat)
       setLocalUser(localChat.currentUser)
@@ -124,10 +181,8 @@ export default function HomeScreen ({
       setDirectChannel(channel)
       //  We are either the host or the invitee (in the latter case, if the channel already existed)
       if (hostMembership.user.id == chat?.currentUser.id) {
-        console.log(hostMembership)
         setDirectChannelMembership(hostMembership)
       } else {
-        console.log(inviteeMembership)
         setDirectChannelMembership(inviteeMembership)
       }
     }
@@ -141,27 +196,87 @@ export default function HomeScreen ({
     setDirectChannel(null)
   }, [otherUserId])
 
-  if (screen == 0)
+  useEffect(() => {
+    //  UseEffect to receive new messages sent on the channel
+    if (!directChannel) return
+
+    return directChannel.connect(message => {
+      if (message.meta && message.meta['type'] === 'reconciliation') {
+        //  Bit of a hack, this is to simulate payment exchange which a production
+        //  app would do on the server, this code handles the message sent when
+        //  the remote user 'accepts' the transaction
+        if (message.userId != localUser?.id) {
+          const transactionAmount = message.meta['amount']
+          const transactionType = message.meta['transferType']
+          if (transactionType === TransferType.SEND) {
+            setBalance(balance - transactionAmount)
+          }
+          if (transactionType === TransferType.REQUEST) {
+            setBalance(balance + transactionAmount)
+          }
+        }
+      } else {
+        if (
+          message.userId != localUser?.id &&
+          screen != ScreenType.SCREEN_CHAT
+        ) {
+          if (message.meta && message.meta['transactionId']) {
+            //  Payment has been received when we are not on the chat screen - show a simulated push message
+            setPushMessageVisible(true)
+            setCurrentPushMessage(
+              `${
+                message.meta['transferType'] == TransferType.SEND
+                  ? 'You have been sent money.  Tap to accept'
+                  : 'Money has been requested from you.  Tap to review.'
+              } ${message?.content?.text}`
+            )
+          } else {
+            //  Non-payment message has been received when we are not on the chat screen - show a simulated push message
+            setPushMessageVisible(true)
+            setCurrentPushMessage(
+              `${remoteUser?.name}: ${message?.content?.text}`
+            )
+          }
+        }
+      }
+    })
+  }, [directChannel, balance, localUser, screen, remoteUser])
+
+  //  I know this isn't the best navigation architecture! But it's only a demo :)
+  if (screen == ScreenType.SCREEN_TOP_LEVEL)
     return (
-      <PaymentMenuScreen
-        loggedInUser={localUser}
-        remoteUser={remoteUser}
-        logoutUser={() => {
-          setPrepopulatedUser(null)
-          logoutUser()
-        }} //  todo when log out also null out the Chat variable (if needed?)
-        balance={balance}
-        setBalance={setBalance}
-        sendMoneyClick={() => {
-          sendMoneyClick(null)
-        }}
-        requestMoneyClick={() => {
-          requestMoneyClick(null)
-        }}
-        chatWithFriendClicked={chatWithFriendClicked}
-      ></PaymentMenuScreen>
+      <div>
+        <SimulatedPushNotification
+          message={currentPushMessage}
+          isVisible={pushMessageVisible}
+          setIsVisible={setPushMessageVisible}
+          isClicked={() => {
+            setScreen(ScreenType.SCREEN_CHAT)
+            setPushMessageVisible(false)
+          }}
+        ></SimulatedPushNotification>
+        <PaymentMenuScreen
+          loggedInUser={localUser}
+          remoteUser={remoteUser}
+          logoutUser={() => {
+            setPrepopulatedUser(null)
+            setChat(null)
+            setLocalUser(null)
+            logoutUser()
+          }}
+          balance={balance}
+          setBalance={setBalance}
+          sendMoneyClick={() => {
+            sendMoneyClick(null)
+          }}
+          requestMoneyClick={() => {
+            requestMoneyClick(null)
+          }}
+          chatWithFriendClicked={chatWithFriendClicked}
+        ></PaymentMenuScreen>
+      </div>
     )
-  if (screen == 1)
+  if (screen == ScreenType.SCREEN_PAYMENT_TRANSFER)
     return (
       <TransferMoneyScreen
         remoteUser={remoteUser}
@@ -170,19 +285,19 @@ export default function HomeScreen ({
         prepopulatedUser={prepopulatedUser}
         goBack={() => {
           if (prepopulatedUser) {
-            setScreen(2)
+            setScreen(ScreenType.SCREEN_CHAT)
           } else {
-            setScreen(0)
+            setScreen(ScreenType.SCREEN_TOP_LEVEL)
           }
         }}
         initiateTransferRequest={initiateTransferRequest}
       ></TransferMoneyScreen>
     )
-  if (screen == 2)
+  if (screen == ScreenType.SCREEN_CHAT)
     return (
       <ChatScreen
         goBack={() => {
-          setScreen(0)
+          setScreen(ScreenType.SCREEN_TOP_LEVEL)
         }}
         sendMoneyClick={() => {
           sendMoneyClick(remoteUser)
@@ -194,21 +309,26 @@ export default function HomeScreen ({
         activeChannelMembership={directChannelMembership}
         localUser={localUser}
         remoteUser={remoteUser}
+        balance={balance}
+        setBalance={setBalance}
+        showReceiptScreen={message => {
+          showReceiptScreen(message)
+        }}
       ></ChatScreen>
     )
-  if (screen == 3)
+  if (screen == ScreenType.SCREEN_RECEIPT)
     return (
       <ReceiptScreen
         goBack={() => {
-          setScreen(2)
+          setScreen(ScreenType.SCREEN_CHAT)
         }}
-        transactionId={'5641232135101'}
-        sender={localUser} //  todo This will need to be the user derived from the message - will need separate variables
-        recipient={remoteUser}
-        amount={10000}
-        reference={'546510133'}
-        timeOfRequest={'Oct 24, 2024 15:54:33'}
-        timeOfTransactionComplete={'Oct 24, 2024 15:53:11'}
+        transactionId={receiptTransactionId}
+        sender={receiptSender}
+        recipient={receiptRecipient}
+        amount={receiptAmount}
+        reference={receiptReference}
+        timeOfRequest={receiptTimeOfRequest}
+        status={receiptStatus}
       ></ReceiptScreen>
     )
 }

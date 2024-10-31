@@ -1,19 +1,20 @@
 import Image from 'next/image'
-import Avatar from './avatar'
-import { MessageDraft, User, Channel } from '@pubnub/chat'
-import { useState, useEffect, useRef } from 'react'
-import { ToastType } from '@/app/types'
+import { useState, useRef } from 'react'
+import { actionCompleted } from 'pubnub-demo-integration'
 
-export default function MessageInput ({
-  activeChannel
-}) {
+export default function MessageInput ({ activeChannel }) {
   const [text, setText] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleSend (event: React.SyntheticEvent) {
     event.preventDefault()
     if (!text || !activeChannel) return
-    console.log()
+    //  These actions only apply to the demo hosted on pubnub.com
+    actionCompleted({
+      action: 'Send a Message in Chat',
+      blockDuplicateCalls: false,
+      debug: false
+    })
     await activeChannel.sendText(text, { storeInHistory: true })
     setText('')
   }

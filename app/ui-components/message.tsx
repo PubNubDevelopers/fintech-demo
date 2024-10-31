@@ -1,10 +1,12 @@
 import Avatar from './avatar'
 import Image from 'next/image'
 import { roboto } from '@/app/fonts'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import MessageReaction from './messageReaction'
-import { PresenceIcon, TransferType } from '@/app/types'
-import { Channel, TimetokenUtils, MixedTextTypedElement } from '@pubnub/chat'
+import Pill from './pill'
+import { CurrencySymbol, PresenceIcon, TransferType } from '@/app/types'
+import { TimetokenUtils, MixedTextTypedElement } from '@pubnub/chat'
+import { actionCompleted } from 'pubnub-demo-integration'
 
 export default function Message ({
   received,
@@ -15,56 +17,64 @@ export default function Message ({
   message,
   currentUserId,
   inPinned = false,
-  inThread = false
+  inThread = false,
+  activeChannel,
+  balance,
+  setBalance,
+  showReceiptScreen
 }) {
   const [actionsShown, setActionsShown] = useState(false)
-  let messageHovered = false
-  let actionsHovered = false
 
-  const handleMessageMouseEnter = e => {
-    messageHovered = true
+  const handleMessageMouseEnter = () => {
     setActionsShown(true)
   }
-  const handleMessageMouseLeave = e => {
-    messageHovered = false
+  const handleMessageMouseLeave = () => {
     setActionsShown(false)
   }
-
-  function testIfActionsHovered () {
-    if (messageHovered) return
-    if (!actionsHovered) {
-      setActionsShown(false)
-    }
-  }
-
-  function handleMessageActionsEnter () {
-    actionsHovered = true
-    setActionsShown(true)
-  }
-
-  function handleMessageActionsLeave () {
-    actionsHovered = false
-    if (!messageHovered) {
-      setActionsShown(false)
-    }
-  }
-
 
   function openLink (url) {
     window.open(url, '_blank')
   }
 
-  async function reactionClicked (emoji, timetoken) {
+  async function reactionClicked (emoji) {
+    //  These actions only apply to the demo hosted on pubnub.com
+    actionCompleted({
+      action: 'React to a Chat Message',
+      blockDuplicateCalls: false,
+      debug: false
+    })
     await message?.toggleReaction(emoji)
   }
 
-  async function paymentAction(actionType, message)
-  {
-    if (actionType == 'accept')
-    {
-      console.log('Accept payment for message ' + message.timetoken)
-      message.meta["status"] = "ACCEPTED"
-      message.editText("I am edited text", {meta: {'status': 'ACCEPTED'}})
+  async function paymentAction (actionType, message, balance, setBalance) {
+    if (actionType == 'accept') {
+      const threadChannel = await message.createThread()
+      await threadChannel.sendText('accepted', { meta: { type: 'acceptance' } })
+      //  Bit of a hack, but obviously you would use your payment backend to handle this
+      await activeChannel.sendText('', {
+        meta: {
+          type: 'reconciliation',
+          transferType: message.meta['transferType'],
+          amount: message.meta['amount']
+        },
+        storeInHistory: false
+      })
+      const transactionAmount = message.meta['amount']
+      const transactionType = message.meta['transferType']
+      if (transactionType == TransferType.SEND) {
+        setBalance(balance + transactionAmount)
+      }
+      if (transactionType == TransferType.REQUEST) {
+        setBalance(balance - transactionAmount)
+      }
+    } else if (actionType == 'viewreceipt') {
+      //  These actions only apply to the demo hosted on pubnub.com
+      actionCompleted({
+        action: 'View a Receipt',
+        blockDuplicateCalls: false,
+        debug: false
+      })
+      showReceiptScreen(message)
     }
   }
 
@@ -94,23 +104,26 @@ export default function Message ({
     return datetime
   }, [])
 
-  //  Originally I was not writing the 'lastTimetoken' for messages I was sending myself, however
-  //  that caused the Chat SDK's notion of an unread message count inconsistent, so I am removing
-  //  readReceipts I set myself in this useCallback
-  const determineReadStatus = useCallback((timetoken, readReceipts) => {
-    if (!readReceipts) return false
-    for (let i = 0; i < Object.keys(readReceipts).length; i++) {
-      const receipt = Object.keys(readReceipts)[i]
-      const findMe = readReceipts[receipt].indexOf(currentUserId)
-      if (findMe > -1) {
-        readReceipts[receipt].splice(findMe, 1)
+  //  This logic is copy / pasted from the Chat SDK demo where I was writing the 'lastTimetoken'
+  //  for messages I was sending myself, but this demo does not do that, it only sets the
+  //  'lastTimetoken' for messages it receives, so the findMe is redundant below.
+  const determineReadStatus = useCallback(
+    (timetoken, readReceipts) => {
+      if (!readReceipts) return false
+      for (let i = 0; i < Object.keys(readReceipts).length; i++) {
+        const receipt = Object.keys(readReceipts)[i]
+        const findMe = readReceipts[receipt].indexOf(currentUserId)
+        if (findMe > -1) {
+          readReceipts[receipt].splice(findMe, 1)
+        }
+        if (readReceipts[receipt].length > 0 && receipt >= timetoken) {
+          return true
+        }
       }
-      if (readReceipts[receipt].length > 0 && receipt >= timetoken) {
-        return true
-      }
-    }
-    return false
-  }, [])
+      return false
+    },
+    [currentUserId]
+  )
 
   const renderMessagePart = useCallback(
     (messagePart: MixedTextTypedElement, index: number) => {
@@ -146,20 +159,72 @@ export default function Message ({
   )
 
   const renderPayment = useCallback(
-    (message, messageMeta) => {
+    (message, messageMeta, balance, setBalance) => {
       return (
-        <div>
-        {(messageMeta["transferType"] == TransferType.SEND && 
-        <span className='text-navy500'>Has Action (send)</span>)}
-        {/*(messageMeta["transferType"] == TransferType.RECEIVE && 
-        <span className='text-navy500'>Has Action (receive)</span>)*/}
-        {(message.userId == currentUserId && 
-        <span className='text-navy500'>I sent it</span>)}
-        {(
-          messageMeta["status"] && 
-          <span className=''>Status is {messageMeta["status"]}</span> 
-        )}
-        <div className="cursor-pointer" onClick={() => paymentAction('accept', message)}>Accept Payment</div>
+        <div className='flex flex-col'>
+          {/* Show the amount sent, received or requested */}
+          {messageMeta['transferType'] == TransferType.SEND &&
+            message.userId == currentUserId && (
+              <div className='text-lg'>
+                You Sent {CurrencySymbol}
+                {(messageMeta['amount'] / 100).toFixed(2)}
+              </div>
+            )}
+          {messageMeta['transferType'] == TransferType.SEND &&
+            message.userId != currentUserId && (
+              <div className='text-lg'>
+                I Sent You {CurrencySymbol}
+                {(messageMeta['amount'] / 100).toFixed(2)}
+              </div>
+            )}
+          {messageMeta['transferType'] == TransferType.REQUEST &&
+            message.userId == currentUserId && (
+              <div className='text-lg'>
+                You Requested {CurrencySymbol}
+                {(messageMeta['amount'] / 100).toFixed(2)}
+              </div>
+            )}
+          {messageMeta['transferType'] == TransferType.REQUEST &&
+            message.userId != currentUserId && (
+              <div className='text-lg'>
+                Request received for {CurrencySymbol}
+                {(messageMeta['amount'] / 100).toFixed(2)}
+              </div>
+            )}
+
+          {/* Status Display */}
+
+          {!message.hasThread && (
+            <div className='text-sm'>{`Waiting for ${
+              message.userId == currentUserId ? `Them` : `You`
+            } to Accept`}</div>
+          )}
+          {message.hasThread && (
+            <div className='text-sm'>{`Transfer accepted`}</div>
+          )}
+
+          {/* Status Actions */}
+
+          {!message.hasThread && message.userId != currentUserId && (
+            <Pill
+              text='Accept'
+              className={'self-center m-1 bg-success'}
+              clickAction={() => {
+                paymentAction('accept', message, balance, setBalance)
+              }}
+              textClassName={'text-sm'}
+            ></Pill>
+          )}
+
+          {/* View Receipt */}
+          <Pill
+            text='View Receipt'
+            className={'self-start'}
+            clickAction={() => {
+              paymentAction('viewreceipt', message, balance, setBalance)
+            }}
+            textClassName={'text-xs'}
+          ></Pill>
         </div>
       )
     }, []
@@ -176,7 +241,7 @@ export default function Message ({
           <div className='min-w-11'>
             {!inThread && (
               <Avatar
-                present={-1}
+                present={PresenceIcon.ONLINE}
                 avatarUrl={avatarUrl ? avatarUrl : '/avatars/placeholder.png'}
               />
             )}
@@ -218,7 +283,6 @@ export default function Message ({
             onMouseMove={handleMessageMouseEnter}
             onMouseLeave={handleMessageMouseLeave}
           >
-
             <div className='flex flex-col w-full'>
               {/* Will chase with the chat team to see why I need these conditions (get an error about missing 'type' if they are absent) */}
               <div className='flex flex-row items-center w-full flex-wrap'>
@@ -227,25 +291,28 @@ export default function Message ({
                   message.content.textLink ||
                   message.content.mention ||
                   message.content.channelReference) &&
+                  !message.meta['type'] &&
                   message
                     .getMessageElements()
                     .map((msgPart, index) => renderMessagePart(msgPart, index))}
-                {message.meta && (
-                  renderPayment(message, message.meta)
-                )}
                 {message.actions && message.actions.edited && (
                   <span className='text-navy500'>&nbsp;&nbsp;(edited)</span>
                 )}
-                {message.files && message.files.length > 0 && (
+              </div>
+              {message.files &&
+                message.files.length > 0 &&
+                message.files[0].url.includes('no-symbol') == 0 && (
                   <Image
                     src={`${message.files[0].url}`}
-                    alt='PubNub Logo'
-                    className='absolute right-2 top-2'
-                    width={25}
-                    height={25}
+                    alt='Received Image'
+                    className='mb-1'
+                    width={50}
+                    height={50}
                   />
                 )}
-              </div>
+              {message.meta &&
+                message.meta['type'] == 'payment' &&
+                renderPayment(message, message.meta, balance, setBalance)}
             </div>
             {!received && showReadIndicator && (
               <Image
@@ -261,43 +328,62 @@ export default function Message ({
                 priority
               />
             )}
+            {actionsShown && (
+              <div
+                className='absolute top-2 right-2 cursor-pointer'
+                onClick={() => {
+                  message.delete({ soft: true })
+                }}
+              >
+                <Image
+                  src='/icons/bin.svg'
+                  alt='delete'
+                  className=''
+                  width={20}
+                  height={20}
+                />
+              </div>
+            )}
             <div className='absolute right-[10px] -bottom-[20px] flex flex-row items-center z-10 select-none'>
               {/*arrayOfEmojiReactions*/}
-              {actionsShown && !message.hasUserReaction("😊") && <MessageReaction
-                  emoji={"😊"}
-                  messageTimetoken={message.timetoken}
+              {actionsShown && !message.hasUserReaction('😊') && (
+                <MessageReaction
+                  emoji={'😊'}
                   count={0}
-                  displayOverride = {true}
+                  displayOverride={true}
                   reactionClicked={reactionClicked}
-                />}
-              {actionsShown && !message.hasUserReaction("💸") && <MessageReaction
-                  emoji={"💸"}
-                  messageTimetoken={message.timetoken}
+                />
+              )}
+              {actionsShown && !message.hasUserReaction('💸') && (
+                <MessageReaction
+                  emoji={'💸'}
                   count={0}
-                  displayOverride = {true}
+                  displayOverride={true}
                   reactionClicked={reactionClicked}
-                />}
-              {actionsShown && !message.hasUserReaction("💰") && <MessageReaction
-                  emoji={"💰"}
-                  messageTimetoken={message.timetoken}
+                />
+              )}
+              {actionsShown && !message.hasUserReaction('💰') && (
+                <MessageReaction
+                  emoji={'💰'}
                   count={0}
-                  displayOverride = {true}
+                  displayOverride={true}
                   reactionClicked={reactionClicked}
-                />}
-              {actionsShown && !message.hasUserReaction("🤕") && <MessageReaction
-                  emoji={"🤕"}
-                  messageTimetoken={message.timetoken}
+                />
+              )}
+              {actionsShown && !message.hasUserReaction('🤕') && (
+                <MessageReaction
+                  emoji={'🤕'}
                   count={0}
-                  displayOverride = {true}
+                  displayOverride={true}
                   reactionClicked={reactionClicked}
-                />}
+                />
+              )}
               {message.reactions
                 ? Object?.keys(message.reactions)
                     .slice(0, 18)
                     .map((emoji, index) => (
                       <MessageReaction
                         emoji={emoji}
-                        messageTimetoken={message.timetoken}
                         count={message.reactions[emoji].length}
                         reactionClicked={reactionClicked}
                         key={index}
@@ -305,7 +391,6 @@ export default function Message ({
                     ))
                 : ''}
             </div>
-                     
           </div>
         </div>
       </div>

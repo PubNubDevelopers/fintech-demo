@@ -3,14 +3,14 @@
 import LoginScreen from './screens/loginScreen'
 import HomeScreen from './screens/homeScreen'
 import CustomStatusBar from './ui-components/statusBar'
-import { Chat, User, Channel } from '@pubnub/chat'
-import { getAuthKey } from "@/app/getAuthKey"
+import { Chat } from '@pubnub/chat'
+import { getAuthKey } from '@/app/getAuthKey'
 import { useState, useEffect } from 'react'
 import { userData } from './data/user-data'
 import Image from 'next/image'
+import { actionCompleted } from 'pubnub-demo-integration'
 
 export default function Home () {
-  const [showSpinner, setShowSpinner] = useState(false)
   const [device1SelectedId, setDevice1SelectedId] = useState(null)
   const [device2SelectedId, setDevice2SelectedId] = useState(null)
   const [loadMessage, setLoadMessage] = useState('Demo is initializing...')
@@ -18,29 +18,37 @@ export default function Home () {
 
   function handlePersonSelectedLeft (userId) {
     setDevice1SelectedId(userId)
-    setShowSpinner(true)
+    //  These actions only apply to the demo hosted on pubnub.com
+    actionCompleted({
+      action: 'Login',
+      blockDuplicateCalls: false,
+      debug: false
+    })
   }
 
   function handlePersonSelectedRight (userId) {
     setDevice2SelectedId(userId)
+    //  These actions only apply to the demo hosted on pubnub.com
+    actionCompleted({
+      action: 'Login',
+      blockDuplicateCalls: false,
+      debug: false
+    })
   }
 
   async function keysetInit (localChat) {
     //  Create users in the keyset
     if (!localChat) return
     try {
-      for (let i = 0; i < userData.users.length; i++)
-      {
-        await localChat.createUser(
-          userData.users[i].id,
-          {
-            name: userData.users[i].name,
-            profileUrl: userData.users[i].avatarUrl,
-            custom: {
-              phone: userData.users[i].phone
-            }
-          })
-        }
+      for (let i = 0; i < userData.users.length; i++) {
+        await localChat.createUser(userData.users[i].id, {
+          name: userData.users[i].name,
+          profileUrl: userData.users[i].avatarUrl,
+          custom: {
+            phone: userData.users[i].phone
+          }
+        })
+      }
     } catch (e) {
       console.log(e)
       return
@@ -51,69 +59,67 @@ export default function Home () {
      If this is the first time loading this keyset, test whether the user
      objects exist, and create them if they do not
   */
- useEffect(()=> {
-  async function init() {
-    if (!process.env.NEXT_PUBLIC_PUBNUB_PUBLISH_KEY) {
-      setLoadMessage('No Publish Key Found')
-      return
-    }
-    if (!process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY) {
-      setLoadMessage('No Subscribe Key Found')
-      return
+  useEffect(() => {
+    async function init () {
+      if (!process.env.NEXT_PUBLIC_PUBNUB_PUBLISH_KEY) {
+        setLoadMessage('No Publish Key Found')
+        return
+      }
+      if (!process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY) {
+        setLoadMessage('No Subscribe Key Found')
+        return
+      }
+
+      const { accessManagerToken } = await getAuthKey('bootstrap')
+      const localChat = await Chat.init({
+        publishKey: process.env.NEXT_PUBLIC_PUBNUB_PUBLISH_KEY,
+        subscribeKey: process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY,
+        userId: 'bootstrap',
+        authKey: accessManagerToken
+      })
+      const testForBootstrapped = await localChat.getUser(userData.users[0].id)
+      if (!testForBootstrapped) {
+        //  We need to bootstrap this keyset
+        setLoadMessage('Creating Users on Keyset')
+        await keysetInit(localChat)
+        location.reload()
+      } else {
+        setBootloadChat(localChat)
+      }
     }
 
-    const { accessManagerToken } = await getAuthKey('bootstrap')
-    const localChat = await Chat.init({
-      publishKey: process.env.NEXT_PUBLIC_PUBNUB_PUBLISH_KEY,
-      subscribeKey: process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY,
-      userId: 'bootstrap',
-      //authKey: accessManagerToken,  /* todo reintroduce this */
-    })
-    setBootloadChat(localChat)
-    const testForBootstrapped = await localChat.getUser(userData.users[0].id)
-    if (!testForBootstrapped)
-    {
-      //  We need to bootstrap this keyset
-      setLoadMessage('Creating Users on Keyset')
-      await keysetInit(localChat)
-      location.reload()
-    }
+    if (bootloadChat) return
+    init()
+  }, [bootloadChat])
 
+  if (!bootloadChat) {
+    return (
+      <main>
+        <div className='flex flex-col w-full h-screen justify-center items-center'>
+          <div className='max-w-96 max-h-96 '>
+            <Image
+              src='/brand-icons/Fintech_Icon.svg'
+              alt='Chat Icon'
+              className=''
+              width={1000}
+              height={1000}
+              priority
+            />
+          </div>
+          <div className='flex mb-5 animate-spin'>
+            <Image
+              src='/icons/loading.png'
+              alt='Chat Icon'
+              className=''
+              width={50}
+              height={50}
+            />
+          </div>
+          <div className='text-2xl select-none'>{loadMessage}</div>
+        </div>
+      </main>
+    )
   }
-
-  if (bootloadChat) return
-  init()
- }, [bootloadChat])
-
- if (!bootloadChat) {
-  return (
-    <main>
-      <div className='flex flex-col w-full h-screen justify-center items-center'>
-        <div className='max-w-96 max-h-96 '>
-          <Image
-            src='/brand-icons/Fintech_Icon.svg'
-            alt='Chat Icon'
-            className=''
-            width={1000}
-            height={1000}
-            priority
-          />
-        </div>
-        <div className='flex mb-5 animate-spin'>
-          <Image
-            src='/icons/loading.png'
-            alt='Chat Icon'
-            className=''
-            width={50}
-            height={50}
-            priority
-          />
-        </div>
-        <div className='text-2xl select-none'>{loadMessage}</div>
-      </div>
-    </main>
-  )
-}
 
   return (
     <main className='flex min-h-screen flex-row size-full justify-between select-none'>
@@ -136,7 +142,13 @@ export default function Home () {
                 chat={bootloadChat}
               ></LoginScreen>
             ) : (
-              <HomeScreen loggedInUserId={device1SelectedId} otherUserId={device2SelectedId} logoutUser={() => {setDevice1SelectedId(null)}}></HomeScreen>
+              <HomeScreen
+                loggedInUserId={device1SelectedId}
+                otherUserId={device2SelectedId}
+                logoutUser={() => {
+                  setDevice1SelectedId(null)
+                }}
+              ></HomeScreen>
             )}
           </div>
 
@@ -153,7 +165,13 @@ export default function Home () {
                 chat={bootloadChat}
               ></LoginScreen>
             ) : (
-              <HomeScreen loggedInUserId={device2SelectedId} otherUserId={device1SelectedId} logoutUser={() => {setDevice2SelectedId(null)}}></HomeScreen>
+              <HomeScreen
+                loggedInUserId={device2SelectedId}
+                otherUserId={device1SelectedId}
+                logoutUser={() => {
+                  setDevice2SelectedId(null)
+                }}
+              ></HomeScreen>
             )}
           </div>
         </div>

@@ -1,12 +1,21 @@
+//  Responsible for rendering the first screen shown after you log in
+
 import Image from 'next/image'
 import Avatar from '../ui-components/avatar'
 import Pill from '../ui-components/pill'
 import PersonPicker from '../ui-components/personPicker'
-import { CurrencySymbol } from '@/app/types'
-import { useState } from 'react'
+import { CurrencySymbol, PresenceIcon } from '@/app/types'
 
-export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUser, balance, setBalance, sendMoneyClick, requestMoneyClick, chatWithFriendClicked }) {
-
+export default function PaymentMenuScreen ({
+  loggedInUser,
+  remoteUser,
+  logoutUser,
+  balance,
+  setBalance,
+  sendMoneyClick,
+  requestMoneyClick,
+  chatWithFriendClicked
+}) {
   function logout () {
     logoutUser()
   }
@@ -17,10 +26,6 @@ export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUse
 
   function personSelected () {
     chatWithFriendClicked(remoteUser)
-  }
-
-  function chatWithSupport() {
-    console.log('Chat with Support')
   }
 
   return (
@@ -38,6 +43,7 @@ export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUse
       <div className='text-2xl text-center m-1'>Payment Menu</div>
       <Avatar
         avatarUrl={loggedInUser?.profileUrl}
+        present={PresenceIcon.ONLINE}
         width={48}
         height={48}
       ></Avatar>
@@ -145,6 +151,7 @@ export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUse
               phone={remoteUser.custom.phone}
               avatarUrl={remoteUser.profileUrl}
               personSelected={personSelected}
+              showPresence={PresenceIcon.ONLINE}
               className={'w-3/5'}
             ></PersonPicker>
           ) : (
@@ -156,10 +163,11 @@ export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUse
             Friends who are unavailable:
           </div>
           <div className='text-sm self-start mx-2'>
-            You have no unavailable friends 😔
+            You have no unavailable friends
           </div>
         </div>
         {/* Administration */}
+        {/*
         <hr className="w-4/5 bg-gray-300 my-4"></hr>
         <div className='flex flex-col items-center'>
           <div className='flex flex-row items-center gap-2 cursor-pointer bg-white p-1 rounded-2xl shadow-lg ' onClick={() => {chatWithSupport()}}>
@@ -174,6 +182,7 @@ export default function PaymentMenuScreen ({ loggedInUser, remoteUser, logoutUse
             <div className='text-md'>Chat with Support</div>
           </div>
         </div>
+        */}
       </div>
     </div>
   )

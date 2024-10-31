@@ -1,8 +1,10 @@
+//  Responsible for showing the screen to either send or request money.
+
 import Image from 'next/image'
-import Avatar from '../ui-components/avatar'
 import Pill from '../ui-components/pill'
 import PersonPicker from '../ui-components/personPicker'
-import { CurrencySymbol, TransferType } from '@/app/types'
+import { imageData } from '../data/user-data'
+import { CurrencySymbol, TransferType, PresenceIcon } from '@/app/types'
 import { useState } from 'react'
 
 export default function TransferMoneyScreen ({
@@ -13,7 +15,7 @@ export default function TransferMoneyScreen ({
   goBack,
   initiateTransferRequest
 }) {
-  const [transferAmount, setTransferAmount] = useState(500)
+  const [transferAmount, setTransferAmount] = useState(500) //  $5.00
   const [projectedBalance, setProjectedBalance] = useState(
     transferType == TransferType.SEND
       ? currentBalance - transferAmount
@@ -49,14 +51,18 @@ export default function TransferMoneyScreen ({
 
   function recipientClicked () {
     if (remoteUser) {
-      console.log('recipient clicked')
       if (!selectedRecipient) setSelectedRecipient(remoteUser)
       else setSelectedRecipient(null)
     }
   }
 
   function requestMoney () {
-    initiateTransferRequest(transferType, transferAmount, selectedRecipient, selectedImage)
+    initiateTransferRequest(
+      transferType,
+      transferAmount,
+      selectedRecipient,
+      selectedImage
+    )
   }
 
   function back () {
@@ -179,9 +185,7 @@ export default function TransferMoneyScreen ({
             {transferType == TransferType.SEND ? 'Money' : 'Request'} will be
             sent to
             {remoteUser && selectedRecipient ? (
-              <div className='font-semibold'>
-                {selectedRecipient.name}
-              </div>
+              <div className='font-semibold'>{selectedRecipient.name}</div>
             ) : (
               <div className='font-semibold'>Please Select Recipient</div>
             )}
@@ -194,6 +198,7 @@ export default function TransferMoneyScreen ({
               phone={remoteUser.custom.phone}
               avatarUrl={remoteUser.profileUrl}
               personSelected={recipientClicked}
+              showPresence={PresenceIcon.ONLINE}
               className={
                 selectedRecipient == null
                   ? 'w-3/5 opacity-100'
@@ -207,12 +212,16 @@ export default function TransferMoneyScreen ({
           )}
         </div>
 
-        <div className='text-xs self-start mx-2'>Choose an Image (optional)</div>
+        <div className='text-xs self-start mx-2'>
+          Choose an Image (optional)
+        </div>
         <div className='flex flex-row gap-2 mt-3'>
           <Image
             src='/icons/no-symbol.svg'
             alt='None'
-            className={`cursor-pointer p-3 ${selectedImage == 1 ? 'border-2 border-inputring' : ''}`}
+            className={`cursor-pointer p-3 ${
+              selectedImage == 1 ? 'border-2 border-inputring' : ''
+            }`}
             onClick={() => {
               setSelectedImage(1)
             }}
@@ -220,9 +229,11 @@ export default function TransferMoneyScreen ({
             height={60}
           />
           <Image
-            src='/logos/pn-logo-red-white.png'
+            src={imageData.images[2].url}
             alt='PN Logo'
-            className={`cursor-pointer ${selectedImage == 2 ? 'border-2 border-inputring' : ''}`}
+            className={`cursor-pointer ${
+              selectedImage == 2 ? 'border-2 border-inputring' : ''
+            }`}
             onClick={() => {
               setSelectedImage(2)
             }}
@@ -230,9 +241,11 @@ export default function TransferMoneyScreen ({
             height={60}
           />
           <Image
-            src='/logos/pn-logo-white-black.png'
+            src={imageData.images[3].url}
             alt='PN Logo'
-            className={`cursor-pointer ${selectedImage == 3 ? 'border-2 border-inputring' : ''}`}
+            className={`cursor-pointer ${
+              selectedImage == 3 ? 'border-2 border-inputring' : ''
+            }`}
             onClick={() => {
               setSelectedImage(3)
             }}
@@ -240,9 +253,11 @@ export default function TransferMoneyScreen ({
             height={60}
           />
           <Image
-            src='/logos/pn-logo-red-black.png'
+            src={imageData.images[4].url}
             alt='PN Logo'
-            className={`cursor-pointer ${selectedImage == 4 ? 'border-2 border-inputring' : ''}`}
+            className={`cursor-pointer ${
+              selectedImage == 4 ? 'border-2 border-inputring' : ''
+            }`}
             onClick={() => {
               setSelectedImage(4)
             }}

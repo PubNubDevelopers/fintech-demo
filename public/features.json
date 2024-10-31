@@ -1,5 +1,10 @@
 {
     "features": [
-      "ToDo"
+      "Login",
+      "Send Money",
+      "Request Money",
+      "Send a Message in Chat",
+      "React to a Chat Message",
+      "View a Receipt"
     ]
 }

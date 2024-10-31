@@ -1,16 +1,21 @@
+//  Screen shown when you first launch the app, allows you to choose who to log in as
+
 import Image from 'next/image'
 import PersonPicker from '../ui-components/personPicker'
-import { Chat, User } from '@pubnub/chat'
+import { User } from '@pubnub/chat'
 import { useState, useEffect } from 'react'
 
 export default function LoginScreen ({
-  personSelected = person => {},
+  personSelected = person => {
+    console.log(person)
+  },
   disabledId,
   isLeft = true,
   chat
 }) {
   const [allUsers, setAllUsers] = useState<User[]>()
 
+  //  The available users are stored in PubNub's serverless storage (populated when this app is first run on the keyset)
   useEffect(() => {
     if (!chat) return
     chat
@@ -22,7 +27,7 @@ export default function LoginScreen ({
 
   return (
     <div className='w-full mt-8 flex flex-col items-center'>
-      <div className='text-3xl text-center m-3'>PubNub FinTech Demo</div>
+      <div className='text-3xl text-center m-3'>Peer-to-Peer Payment Demo</div>
       <Image
         src='/brand-icons/FinTech4_Icon.svg'
         alt='FinTech Icon'

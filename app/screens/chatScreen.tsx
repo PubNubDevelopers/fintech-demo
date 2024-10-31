@@ -1,12 +1,9 @@
+//  Screen to show the conversation between two users
 import Image from 'next/image'
-import Avatar from '../ui-components/avatar'
-import Pill from '../ui-components/pill'
 import MessageList from '../ui-components/messageList'
 import MessageInput from '../ui-components/messageInput'
 import ChipView from '../ui-components/chipView'
-import { CurrencySymbol, TransferType } from '@/app/types'
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Channel, User, Message as pnMessage, Membership } from '@pubnub/chat'
+import { useState, useEffect } from 'react'
 
 export default function ChatScreen ({
   goBack,
@@ -15,9 +12,11 @@ export default function ChatScreen ({
   activeChannel,
   activeChannelMembership,
   localUser,
-  remoteUser
+  remoteUser,
+  balance,
+  setBalance,
+  showReceiptScreen
 }) {
-
   const [typingData, setTypingData] = useState<string[]>([])
 
   useEffect(() => {
@@ -27,13 +26,13 @@ export default function ChatScreen ({
 
   useEffect(() => {
     //  Only register typing indicators for non-public channels
-      if (activeChannel?.type == 'public') return
-      return activeChannel?.getTyping(value => {
-        const findMe = value.indexOf(localUser.id)
-        if (findMe > -1) value.splice(findMe, 1)
-        setTypingData(value)
-      })
-    }, [activeChannel])
+    if (activeChannel?.type == 'public') return
+    return activeChannel?.getTyping(value => {
+      const findMe = value.indexOf(localUser.id)
+      if (findMe > -1) value.splice(findMe, 1)
+      setTypingData(value)
+    })
+  }, [activeChannel, localUser])
 
   function sendMoney () {
     sendMoneyClick()
@@ -63,6 +62,11 @@ export default function ChatScreen ({
         activeChannelMembership={activeChannelMembership}
         currentUser={localUser}
         remoteUser={remoteUser}
+        balance={balance}
+        setBalance={setBalance}
+        showReceiptScreen={message => {
+          showReceiptScreen(message)
+        }}
       ></MessageList>
 
       <ChipView

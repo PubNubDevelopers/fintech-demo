@@ -1,9 +1,9 @@
+//  Responsible for showing the receipt.  This is not the read receipt, this is the simulated payment receipt.
+
 import Image from 'next/image'
-import Avatar from '../ui-components/avatar'
-import Pill from '../ui-components/pill'
-import PersonPicker from '../ui-components/personPicker'
-import { CurrencySymbol, TransferType } from '@/app/types'
-import { useState } from 'react'
+import { CurrencySymbol } from '@/app/types'
+import { useCallback } from 'react'
+import { TimetokenUtils } from '@pubnub/chat'
 
 export default function ReceiptScreen ({
   goBack,
@@ -13,8 +13,34 @@ export default function ReceiptScreen ({
   amount,
   reference,
   timeOfRequest,
-  timeOfTransactionComplete
+  status
 }) {
+  const determineUserReadableDate = useCallback(timetoken => {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ]
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const date = TimetokenUtils.timetokenToDate(timetoken)
+    const datetime = `${days[date.getDay()]} ${date.getDate()} ${
+      months[date.getMonth()]
+    } ${(date.getHours() + '').padStart(2, '0')}:${(
+      date.getMinutes() + ''
+    ).padStart(2, '0')}:${(date.getSeconds() + '').padStart(2, '0')}`
+
+    return datetime
+  }, [])
+
   return (
     <div className='w-full mt-8 flex flex-col items-center overflow-y-auto overscroll-none'>
       <Image
@@ -43,7 +69,7 @@ export default function ReceiptScreen ({
         <div className='flex flex-col relative -top-5 w-[90%] bg-neutral50 rounded-md px-4 py-7 gap-1'>
           <div className='flex flex-col'>
             <div className='text-xs'>Transaction id</div>
-            <div className='text-lg'>0231 2165 2a156</div>
+            <div className='text-lg'>{transactionId}</div>
           </div>
           <div className='flex flex-col'>
             <div className='text-xs'>Sent by</div>
@@ -64,8 +90,8 @@ export default function ReceiptScreen ({
             </div>
           </div>
           <div className='flex flex-col'>
-            <div className='text-xs'>Sent by</div>
-            <div className='text-lg'>Immediate Payment</div>
+            <div className='text-xs'>Payment Status</div>
+            <div className='text-lg'>{status}</div>
           </div>
           <hr className='w-4/5 bg-gray-300 my-4'></hr>
           <div className='flex flex-row justify-between'>
@@ -83,12 +109,10 @@ export default function ReceiptScreen ({
             <div className='text-xs'>{reference}</div>
           </div>
           <div className='flex flex-row justify-between'>
-            <div className='text-xs'>Request:</div>
-            <div className='text-xs'>{timeOfRequest}</div>
-          </div>
-          <div className='flex flex-row justify-between'>
-            <div className='text-xs'>Complete:</div>
-            <div className='text-xs'>{timeOfTransactionComplete}</div>
+            <div className='text-xs'>Time of Request:</div>
+            <div className='text-xs'>
+              {determineUserReadableDate(timeOfRequest)}
+            </div>
           </div>
         </div>
         <div className='flex flex-row relative -top-5 '>

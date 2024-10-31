@@ -11,6 +11,7 @@
   "dependencies": {
     "@pubnub/chat": "^0.8.2",
     "next": "15.0.0",
+    "pubnub-demo-integration": "^1.0.1",
     "react": "19.0.0-rc-65a56d0e-20241020",
     "react-dom": "19.0.0-rc-65a56d0e-20241020"
   },
