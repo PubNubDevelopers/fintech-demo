@@ -15,10 +15,12 @@
         },
         body: JSON.stringify({ UUID: userId }),
       });
+
+      console.log(response)
   
       const data = await response.json();
       if (data.statusCode !== 200) {
-        //console.log(data.message);
+        console.log(data.message);
       } else {
         const token = data.body.token;
         return {
