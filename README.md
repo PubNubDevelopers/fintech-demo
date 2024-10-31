@@ -58,7 +58,7 @@ To run this project yourself you will need a PubNub account
 
 1. Enable the Message Persistence feature on your keyset and choose a duration
 
-1. Enable the App Context feature.
+1. Enable the App Context feature.  **Important**: It is recommended to also uncheck the `Disallow Get All User Metadata` option for this demo.
 
 1. Enable the File Sharing feature.
 
