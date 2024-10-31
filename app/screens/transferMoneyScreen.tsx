@@ -187,7 +187,7 @@ export default function TransferMoneyScreen ({
             {remoteUser && selectedRecipient ? (
               <div className='font-semibold'>{selectedRecipient.name}</div>
             ) : (
-              <div className='font-semibold'>Please Select Recipient</div>
+              <div className='font-semibold text-cherryDark'>Please Select Recipient</div>
             )}
           </div>
           <div className='text-xs self-start mx-2'>Possible Recipients</div>
@@ -201,8 +201,8 @@ export default function TransferMoneyScreen ({
               showPresence={PresenceIcon.ONLINE}
               className={
                 selectedRecipient == null
-                  ? 'w-3/5 opacity-100'
-                  : 'w-3/5 opacity-30'
+                  ? 'w-3/5 opacity-100 border-1 border-neutral-100'
+                  : 'w-3/5 opacity-100 border-2 statusIndicatorSuccess100'
               }
             ></PersonPicker>
           ) : (
