@@ -74,16 +74,16 @@ const images = {
       name: "no-symbol.svg",
     },
     {
-      url: "/logos/pn-logo-red-black.png",
-      name: "pn-logo-red-black.png",
+      url: "/logos/red-packet-1.png",
+      name: "red-packet-1",
     },
     {
-      url: "/logos/pn-logo-red-white.png",
-      name: "pn-logo-red-white.png",
+      url: "/logos/red-packet-2.png",
+      name: "red-packet-2",
     },
     {
-      url: "/logos/pn-logo-white-black.png",
-      name: "pn-logo-white-black.png",
+      url: "/logos/red-packet-4.png",
+      name: "red-packet-4",
     },
   ],
 };

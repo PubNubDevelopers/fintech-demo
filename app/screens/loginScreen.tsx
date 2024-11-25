@@ -29,11 +29,11 @@ export default function LoginScreen ({
     <div className='w-full mt-8 flex flex-col items-center'>
       <div className='text-3xl text-center m-3'>Peer-to-Peer Payment Demo</div>
       <Image
-        src='/brand-icons/FinTech4_Icon.svg'
-        alt='FinTech Icon'
+        src='/brand-icons/payMe-logo-header.png'
+        alt='PayMe Icon'
         className='mb-2'
-        width={50}
-        height={50}
+        width={200}
+        height={70}
       />
       <div className='text-xl text-center m-2'>
         {isLeft ? 'Select First User' : 'Select Second User'}
