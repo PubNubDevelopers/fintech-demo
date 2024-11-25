@@ -7,7 +7,7 @@
     try {
       console.log("Getting Auth Key")
       const TOKEN_SERVER =
-        "https://devrel-demos-access-manager.netlify.app/.netlify/functions/api/fintech";
+        "https://devrel-demos-access-manager.netlify.app/.netlify/functions/api/fintech-apac1";
       const response = await fetch(`${TOKEN_SERVER}/grant`, {
         method: "POST",
         headers: {
