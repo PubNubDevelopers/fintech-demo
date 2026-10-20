@@ -65,21 +65,35 @@ export default function MessageList ({
     if (!activeChannel) return
     if (activeChannel.type == 'public') return //  Read receipts are not supported on public channels
 
-    let stopReadReceiptsFn
-    const go = async () =>
-      (stopReadReceiptsFn = await activeChannel.streamReadReceipts(receipts => {
-        setReadReceipts(receipts)
-      }))
-
-    go()
-    return () => stopReadReceiptsFn()
+    //  Chat SDK 1.0: streamReadReceipts() is deprecated.  Fetch the current receipts, then listen for
+    //  new ones, and keep the previous { [timetoken]: userIds[] } shape used by the message component
+    const lastReadByUser = {}
+    const updateReadReceipts = () => {
+      const receipts = {}
+      Object.keys(lastReadByUser).forEach(userId => {
+        const timetoken = lastReadByUser[userId]
+        receipts[timetoken] = [...(receipts[timetoken] ?? []), userId]
+      })
+      setReadReceipts(receipts as any)
+    }
+    activeChannel.fetchReadReceipts().then(response => {
+      response.receipts.forEach(receipt => {
+        if (receipt.lastReadTimetoken && !lastReadByUser[receipt.userId])
+          lastReadByUser[receipt.userId] = receipt.lastReadTimetoken
+      })
+      updateReadReceipts()
+    })
+    return activeChannel.onReadReceiptReceived(receipt => {
+      lastReadByUser[receipt.userId] = receipt.lastReadTimetoken
+      updateReadReceipts()
+    })
   }, [activeChannel])
 
   useEffect(() => {
     //  UseEffect to receive new messages sent on the channel
     if (!activeChannel || !activeChannelMembership) return
 
-    return activeChannel.connect(message => {
+    return activeChannel.onMessageReceived(message => {
       if (message.meta && message.meta['type'] !== 'reconciliation') {
         if (message.userId != currentUser.id) {
           activeChannelMembership?.setLastReadMessageTimetoken(

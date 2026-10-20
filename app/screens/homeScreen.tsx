@@ -101,17 +101,24 @@ export default function HomeScreen ({
         console.log('Failed to attach file to message: ' + e)
       }
     }
-    directChannel?.sendText('', {
-      meta: {
-        type: 'payment',
-        transferType: transferType,
-        amount: transferAmount,
-        transactionId: makeid(8),
-        reference: makeid(10)
-      },
-      files: myImageFile,
-      storeInHistory: true
+    //  Chat SDK 1.0: sendText() no longer accepts files, so send through a message draft
+    const messageDraft = directChannel?.createMessageDraft({
+      isTypingIndicatorTriggered: false
     })
+    if (messageDraft) {
+      messageDraft.update('')
+      messageDraft.files = myImageFile
+      messageDraft.send({
+        meta: {
+          type: 'payment',
+          transferType: transferType,
+          amount: transferAmount,
+          transactionId: makeid(8),
+          reference: makeid(10)
+        },
+        storeInHistory: true
+      })
+    }
 
     setTimeout(() => {
       if (otherUserId) {
@@ -156,12 +163,16 @@ export default function HomeScreen ({
       const { accessManagerToken } = await getAuthKey(loggedInUserId)
       const localChat = await Chat.init({
         publishKey: process.env.NEXT_PUBLIC_PUBNUB_PUBLISH_KEY,
-        subscribeKey: process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY,
+        subscribeKey: process.env.NEXT_PUBLIC_PUBNUB_SUBSCRIBE_KEY as string,
         userId: loggedInUserId,
         typingTimeout: 5000,
         storeUserActivityTimestamps: true, //  Not used in this demo, but set these to be able to access the user.active property
         storeUserActivityInterval: 60000 /* 1 minute */,
-        authKey: accessManagerToken
+        authKey: accessManagerToken,
+        //  The same channel is subscribed from several components.  With the event engine (default
+        //  since pubnub v11) unsubscribe() can then never remove it, so a logged out user stayed
+        //  subscribed.  Keep the pre-v11 subscription manager.
+        enableEventEngine: false
       })
       setChat(localChat)
       setLocalUser(localChat.currentUser)
@@ -200,7 +211,7 @@ export default function HomeScreen ({
     //  UseEffect to receive new messages sent on the channel
     if (!directChannel) return
 
-    return directChannel.connect(message => {
+    return directChannel.onMessageReceived(message => {
       if (message.meta && message.meta['type'] === 'reconciliation') {
         //  Bit of a hack, this is to simulate payment exchange which a production
         //  app would do on the server, this code handles the message sent when

@@ -48,8 +48,8 @@ export default function Message ({
 
   async function paymentAction (actionType, message, balance, setBalance) {
     if (actionType == 'accept') {
-      const threadChannel = await message.createThread()
-      await threadChannel.sendText('accepted', { meta: { type: 'acceptance' } })
+      //  Chat SDK 1.0: createThread() takes the first thread message and sends it
+      await message.createThread('accepted', { meta: { type: 'acceptance' } })
       //  Bit of a hack, but obviously you would use your payment backend to handle this
       await activeChannel.sendText('', {
         meta: {
@@ -379,12 +379,12 @@ export default function Message ({
                 />
               )}
               {message.reactions
-                ? Object?.keys(message.reactions)
+                ? message.reactions
                     .slice(0, 18)
-                    .map((emoji, index) => (
+                    .map((reaction, index) => (
                       <MessageReaction
-                        emoji={emoji}
-                        count={message.reactions[emoji].length}
+                        emoji={reaction.value}
+                        count={reaction.userIds.length}
                         reactionClicked={reactionClicked}
                         key={index}
                       />

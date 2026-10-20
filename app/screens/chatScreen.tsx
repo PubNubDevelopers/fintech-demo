@@ -27,7 +27,7 @@ export default function ChatScreen ({
   useEffect(() => {
     //  Only register typing indicators for non-public channels
     if (activeChannel?.type == 'public') return
-    return activeChannel?.getTyping(value => {
+    return activeChannel?.onTypingChanged(value => {
       const findMe = value.indexOf(localUser.id)
       if (findMe > -1) value.splice(findMe, 1)
       setTypingData(value)
